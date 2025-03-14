@@ -17,7 +17,6 @@ import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -36,77 +35,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {Contact} from "@/types/contact";
 
-const data: Payment[] = [
-    {
-        id: "m5gr84i9",
-        amount: 316,
-        status: "success",
-        email: "ken99@yahoo.com",
-    },
-    {
-        id: "3u1reuv4",
-        amount: 242,
-        status: "success",
-        email: "Abe45@gmail.com",
-    },
-    {
-        id: "derv1ws0",
-        amount: 837,
-        status: "processing",
-        email: "Monserrat44@gmail.com",
-    },
-    {
-        id: "5kma53ae",
-        amount: 874,
-        status: "success",
-        email: "Silas22@gmail.com",
-    },
-    {
-        id: "bhqecj4p",
-        amount: 721,
-        status: "failed",
-        email: "carmella@hotmail.com",
-    },
-]
-
-export type Payment = {
-    id: string
-    amount: number
-    status: "pending" | "processing" | "success" | "failed"
-    email: string
-}
-
-export const columns: ColumnDef<Payment>[] = [
-    {
-        id: "select",
-        header: ({ table }) => (
-            <Checkbox
-                checked={
-                    table.getIsAllPageRowsSelected() ||
-                    (table.getIsSomePageRowsSelected() && "indeterminate")
-                }
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label="Select all"
-            />
-        ),
-        cell: ({ row }) => (
-            <Checkbox
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label="Select row"
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-    {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => (
-            <div className="capitalize">{row.getValue("status")}</div>
-        ),
-    },
+export const columns: ColumnDef<Contact>[] = [
     {
         accessorKey: "email",
         header: ({ column }) => {
@@ -124,25 +55,56 @@ export const columns: ColumnDef<Payment>[] = [
         cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
     },
     {
-        accessorKey: "amount",
-        header: () => <div className="text-right">Amount</div>,
+        accessorKey: "firstName",
+        header: ({ column }) => {
+            return (
+              <Button
+                variant="noShadow"
+                size="sm"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              >
+                  First Name
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+            )
+        },
+        cell: ({ row }) => <div className="capitalize">{row.getValue("firstName")}</div>,
+    },
+    {
+        accessorKey: "lastName",
+        header: ({ column }) => {
+            return (
+              <Button
+                variant="noShadow"
+                size="sm"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              >
+                  Last Name / Company
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+            )
+        },
+        cell: ({ row }) => <div className="capitalize">{row.getValue("lastName")}</div>,
+    },
+    {
+        accessorKey: "address",
+        header: () => <div className="text-right">Address</div>,
         cell: ({ row }) => {
-            const amount = parseFloat(row.getValue("amount"))
-
-            // Format the amount as a dollar amount
-            const formatted = new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-            }).format(amount)
-
-            return <div className="text-right font-base">{formatted}</div>
+            return <div className="text-right font-base">{row.getValue("address")}</div>
+        },
+    },
+    {
+        accessorKey: "phoneNumber",
+        header: () => <div className="text-right">Phone Number</div>,
+        cell: ({ row }) => {
+            return <div className="text-right font-base">{row.getValue("phoneNumber")}</div>
         },
     },
     {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-            const payment = row.original
+            const contact = row.original
 
             return (
                 <DropdownMenu>
@@ -155,9 +117,14 @@ export const columns: ColumnDef<Payment>[] = [
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
-                            onClick={() => navigator.clipboard.writeText(payment.id)}
+                            onClick={() => navigator.clipboard.writeText(contact.email)}
                         >
-                            Copy payment ID
+                            Copy Email
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigator.clipboard.writeText(contact.phoneNumber)}
+                        >
+                            Copy Phone Number
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>View customer</DropdownMenuItem>
@@ -169,12 +136,17 @@ export const columns: ColumnDef<Payment>[] = [
     },
 ]
 
-export default function DataTable() {
+interface Props {
+    data: Contact[]
+}
+
+export default function DataTable(props: Props) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
+    const data = props.data;
 
     const table = useReactTable({
         data,
@@ -233,7 +205,7 @@ export default function DataTable() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="rounded-md">
+            <div className="rounded-md h-[570.5px] overflow-auto">
                 <Table>
                     <TableHeader className="font-heading">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -284,10 +256,6 @@ export default function DataTable() {
                 </Table>
             </div>
             <div className="flex items-center justify-end space-x-2 py-4">
-                <div className="text-text flex-1 text-sm">
-                    {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                    {table.getFilteredRowModel().rows.length} row(s) selected.
-                </div>
                 <div className="space-x-2">
                     <Button
                         variant="noShadow"
