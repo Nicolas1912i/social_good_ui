@@ -27,7 +27,7 @@ export default function Home() {
   const [alertProcess, setAlertProcess] = useState<ProcessesEnum>(ProcessesEnum.StartingImportNotification);
 
   const handleFileSubmission = () => {
-    const accessToken = sessionStorage.getItem("accessToken")!;
+    const accessToken = extractAccessToken();
     const contactData = parseCsvToJson(fileContent);
     uploadCsv(contactData, accessToken)
       .then((response) => response.json()
@@ -44,8 +44,6 @@ export default function Home() {
               setTimeout(() => {}, 3000);
               activityStatus = await uploadStatus(accessToken, activityId, setShowAlert, setAlertTitle, setAlertMessage, setAlertProcess);
             }
-
-            window.location.reload();
           }
         }));
   }
@@ -55,12 +53,6 @@ export default function Home() {
       window.location.assign(authUrl);
       return;
     }
-
-    if (tableData.length)
-      return;
-
-    const accessToken = extractAccessToken();
-    sessionStorage.setItem("accessToken", accessToken);
   });
 
   useEffect(() => {
