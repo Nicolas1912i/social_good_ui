@@ -12,7 +12,7 @@ import {
     useReactTable,
     VisibilityState,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
+import {ArrowDownZA, ChevronDown, MoreHorizontal} from "lucide-react"
 
 import * as React from "react"
 
@@ -36,6 +36,13 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import {Contact} from "@/types/contact";
+import {TemporalAlert} from "@/components/ui/temporal-alert";
+import {useEffect, useState} from "react";
+import {ProcessesEnum} from "@/enums/processes-enum";
+
+interface Props {
+    data: Contact[]
+}
 
 export const columns: ColumnDef<Contact>[] = [
     {
@@ -48,14 +55,14 @@ export const columns: ColumnDef<Contact>[] = [
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
                     Email
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                    <ArrowDownZA className="ml-2 h-4 w-4" />
                 </Button>
             )
         },
         cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
     },
     {
-        accessorKey: "firstName",
+        accessorKey: "first_name",
         header: ({ column }) => {
             return (
               <Button
@@ -64,14 +71,14 @@ export const columns: ColumnDef<Contact>[] = [
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
               >
                   First Name
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                  <ArrowDownZA className="ml-2 h-4 w-4" />
               </Button>
             )
         },
-        cell: ({ row }) => <div className="capitalize">{row.getValue("firstName")}</div>,
+        cell: ({ row }) => <div className="capitalize text-center">{row.getValue("first_name")}</div>,
     },
     {
-        accessorKey: "lastName",
+        accessorKey: "last_name",
         header: ({ column }) => {
             return (
               <Button
@@ -79,12 +86,12 @@ export const columns: ColumnDef<Contact>[] = [
                 size="sm"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
               >
-                  Last Name / Company
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                  Last Name
+                  <ArrowDownZA className="ml-2 h-4 w-4" />
               </Button>
             )
         },
-        cell: ({ row }) => <div className="capitalize">{row.getValue("lastName")}</div>,
+        cell: ({ row }) => <div className="capitalize text-center">{row.getValue("last_name")}</div>,
     },
     {
         accessorKey: "address",
@@ -94,10 +101,12 @@ export const columns: ColumnDef<Contact>[] = [
         },
     },
     {
-        accessorKey: "phoneNumber",
-        header: () => <div className="text-right">Phone Number</div>,
+        accessorKey: "phone",
+        header: () => <div className="text-right">
+            Phone
+        </div>,
         cell: ({ row }) => {
-            return <div className="text-right font-base">{row.getValue("phoneNumber")}</div>
+            return <div className="text-right font-base">{row.getValue("phone")}</div>
         },
     },
     {
@@ -117,12 +126,16 @@ export const columns: ColumnDef<Contact>[] = [
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
-                            onClick={() => navigator.clipboard.writeText(contact.email)}
+                            disabled={!contact.email}
+                            onClick={() => navigator.clipboard.writeText(contact.email_address.address)
+                              .then(() => window.dispatchEvent(new CustomEvent("clipboardCopy")))}
                         >
                             Copy Email
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => navigator.clipboard.writeText(contact.phoneNumber)}
+                          disabled={!contact.phone}
+                          onClick={() => navigator.clipboard.writeText(contact.phone_numbers[0].phone_number)
+                            .then(() => window.dispatchEvent(new CustomEvent("clipboardCopy")))}
                         >
                             Copy Phone Number
                         </DropdownMenuItem>
@@ -136,16 +149,14 @@ export const columns: ColumnDef<Contact>[] = [
     },
 ]
 
-interface Props {
-    data: Contact[]
-}
-
 export default function DataTable(props: Props) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
+    const [showAlert, setShowAlert] = useState<boolean>(false);
+
     const data = props.data;
 
     const table = useReactTable({
@@ -166,6 +177,16 @@ export default function DataTable(props: Props) {
             rowSelection,
         },
     })
+
+    useEffect(() => {
+        const handleClipboardCopy = () => setShowAlert(true);
+
+        window.addEventListener("clipboardCopy", handleClipboardCopy);
+
+        return () => {
+            window.removeEventListener("clipboardCopy", handleClipboardCopy);
+        };
+    }, []);
 
     return (
         <div className="w-full font-base text-mtext">
@@ -198,14 +219,14 @@ export default function DataTable(props: Props) {
                                             column.toggleVisibility(value)
                                         }
                                     >
-                                        {column.id}
+                                        {column.id.replace("_", " ")}
                                     </DropdownMenuCheckboxItem>
                                 )
                             })}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="rounded-md h-[570.5px] overflow-auto">
+            <div className="rounded-md h-[570px] overflow-auto">
                 <Table>
                     <TableHeader className="font-heading">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -275,6 +296,12 @@ export default function DataTable(props: Props) {
                     </Button>
                 </div>
             </div>
+
+            {showAlert && <TemporalAlert onClose={() => setShowAlert(false)}
+                                         process={ProcessesEnum.ContactInformationCopied}
+                                         title={"Contact information copied"}
+                                         message={"Successfully copied the contact information into your clipboard!"}
+                                         time={10000}/>}
         </div>
     )
 }

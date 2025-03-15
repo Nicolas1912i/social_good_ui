@@ -1,5 +1,6 @@
 export enum ProcessesEnum {
   StartingImportNotification,
-  ImportStartedNotification,
   ImportFinishedNotification,
+  ImportErrorNotification,
+  ContactInformationCopied
 }

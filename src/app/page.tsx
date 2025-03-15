@@ -8,39 +8,11 @@ import {getContacts, uploadCsv} from "@/services/api-service";
 import {Contact} from "@/types/contact";
 import {TemporalAlert} from "@/components/ui/temporal-alert";
 import {ProcessesEnum} from "@/enums/processes-enum";
-
-function extractAccessToken(authResponse: string): string {
-  const match = authResponse.match(/access_token=([^&]+)/);
-  if (match && match[1]) {
-    return match[1];
-  }
-
-  throw new Error("Unable to extract access token");
-}
-
-function parseCsvToJson(fileContent: string): string {
-  fileContent = fileContent.replace("\r", "");
-  const lines= fileContent.split("\n");
-
-  const result = [];
-
-  const headers= lines[0].split(";");
-
-  for (let i = 1; i < lines.length; i++) {
-
-    const obj = {};
-    const currentLine = lines[i].split(";");
-
-    for (let j = 0; j < headers.length; j++) {
-      // @ts-ignore
-      obj[headers[j]] = currentLine[j];
-    }
-
-    result.push(obj);
-  }
-
-  return JSON.stringify(result);
-}
+import {parseCsvToJson} from "@/services/parse-service";
+import {extractAccessToken} from "@/services/extract-service";
+import {setContactsParameters} from "@/services/contact-parameters-service";
+import {ActivityStatus} from "@/enums/activity-status-enum";
+import {uploadStatus} from "@/services/upload-status-service";
 
 export default function Home() {
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
@@ -48,101 +20,53 @@ export default function Home() {
   const authUrl = "http://localhost:4000/authorize?clientId={client-id}&clientSecret={client-secret}&redirectUrl=http://localhost:3000".replace("{client-id}", clientId).replace("{client-secret}", clientSecret);
 
   const [fileContent, setFileContent] = useState<string>("");
-  const [tableData, setTableData] = useState<any[]>([]);
+  const [tableData, setTableData] = useState<Contact[]>([]);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [alertTitle, setAlertTitle] = useState<string>("");
   const [alertMessage, setAlertMessage] = useState<string>("");
   const [alertProcess, setAlertProcess] = useState<ProcessesEnum>(ProcessesEnum.StartingImportNotification);
 
   const handleFileSubmission = () => {
+    const accessToken = sessionStorage.getItem("accessToken")!;
     const contactData = parseCsvToJson(fileContent);
-    uploadCsv(contactData, sessionStorage.getItem("accessToken")!).then((response) => {
-      if (response.ok) {
-        setShowAlert(true);
-        setAlertTitle("Successfully started import process!");
-        setAlertMessage("The process is running in the background, we'll notify you when the import is complete");
-        setAlertProcess(ProcessesEnum.StartingImportNotification);
-      }
-    });
+    uploadCsv(contactData, accessToken)
+      .then((response) => response.json()
+        .then(async data => {
+          const activityId: string = data.activity_id;
+          if (activityId) {
+            setShowAlert(true);
+            setAlertTitle("Successfully started import process!");
+            setAlertMessage("The process is running in the background, we'll notify you when the import is complete");
+            setAlertProcess(ProcessesEnum.StartingImportNotification);
+
+            let activityStatus = await uploadStatus(accessToken, activityId, setShowAlert, setAlertTitle, setAlertMessage, setAlertProcess);
+            while (activityStatus !== ActivityStatus.completed) {
+              setTimeout(() => {}, 3000);
+              activityStatus = await uploadStatus(accessToken, activityId, setShowAlert, setAlertTitle, setAlertMessage, setAlertProcess);
+            }
+          }
+        }));
   }
 
   useEffect(() => {
     if (!window.location.href.includes("token")) {
       window.location.assign(authUrl);
-    } else {
-      const accessToken = extractAccessToken(window.location.hash.slice(1));
-      sessionStorage.setItem("accessToken", accessToken);
-      if (!tableData.length) {
-        getContacts(accessToken).then(response => response.json().then(data => setTableData(data)));
-      }
+      return;
     }
-  });
 
-  const data: Contact[] = [
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-    {
-      email: "anonymmajora@gmail.com",
-      firstName: "Nicolas",
-      lastName: "Arias",
-      address: "Calle 51 A # 3 F 30, Manizales",
-      phoneNumber: "3009901976"
-    },
-  ]
+    if (tableData.length)
+      return;
+
+    const accessToken = extractAccessToken();
+    sessionStorage.setItem("accessToken", accessToken);
+
+    getContacts(accessToken)
+      .then(response => response.json()
+      .then((data: Contact[]) => {
+        data = data.map(contact => setContactsParameters(contact));
+        setTableData(data)
+      }));
+  });
 
   return (
     <div className="bg-[rgb(223,229,242)] p-5 h-screen flex justify-center items-center relative">
@@ -158,11 +82,11 @@ export default function Home() {
               Publish CSV
             </Button>
           </div>
-          <DataTable data={data}/>
+          <DataTable data={tableData}/>
         </div>
       {showAlert && <TemporalAlert onClose={() => setShowAlert(false)}
                                    process={alertProcess} title={alertTitle}
-                                   message={alertMessage} time={10000}/>}
+                                   message={alertMessage} time={5000}/>}
     </div>
   );
 }

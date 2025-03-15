@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import {ArrowUp10, BadgeCheck, Terminal} from "lucide-react";
+import {ArrowUp10, BadgeCheck, CircleX, ClipboardCopy, Terminal} from "lucide-react";
 import {ProcessesEnum} from "@/enums/processes-enum";
 
 interface Props {
@@ -20,10 +20,12 @@ export function TemporalAlert(props: Props) {
     switch (props.process) {
       case ProcessesEnum.StartingImportNotification:
         return <ArrowUp10 className="h-4 w-4" />;
-      case ProcessesEnum.ImportStartedNotification:
-        return <Terminal className="h-4 w-4" />;
       case ProcessesEnum.ImportFinishedNotification:
         return <BadgeCheck className="h-4 w-4" />;
+      case ProcessesEnum.ContactInformationCopied:
+        return <ClipboardCopy className="h-4 w-4" />
+      case ProcessesEnum.ImportErrorNotification:
+        return <CircleX className="h-4 w-4" />
       default:
         return <Terminal className="h-4 w-4" />;
     }
