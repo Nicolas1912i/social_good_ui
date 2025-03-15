@@ -44,6 +44,8 @@ export default function Home() {
               setTimeout(() => {}, 3000);
               activityStatus = await uploadStatus(accessToken, activityId, setShowAlert, setAlertTitle, setAlertMessage, setAlertProcess);
             }
+
+            window.location.reload();
           }
         }));
   }
@@ -59,14 +61,43 @@ export default function Home() {
 
     const accessToken = extractAccessToken();
     sessionStorage.setItem("accessToken", accessToken);
-
-    getContacts(accessToken)
-      .then(response => response.json()
-      .then((data: Contact[]) => {
-        data = data.map(contact => setContactsParameters(contact));
-        setTableData(data)
-      }));
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+    let abortController: AbortController;
+
+    const fetchContacts = async () => {
+      if (!isMounted)
+        return;
+
+      abortController = new AbortController();
+
+      const response = await getContacts(extractAccessToken());
+
+      let contacts: Contact[] = await response.json();
+
+      if (isMounted && contacts.length !== tableData.length) {
+        contacts = contacts.map(contact => setContactsParameters(contact));
+        setTableData(contacts);
+      }
+
+      if (isMounted) {
+        timeoutId = setTimeout(fetchContacts, 5000);
+      }
+    };
+
+    fetchContacts();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [tableData.length]);
 
   return (
     <div className="bg-[rgb(223,229,242)] p-5 h-screen flex justify-center items-center relative">

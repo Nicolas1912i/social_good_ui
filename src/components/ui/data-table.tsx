@@ -113,7 +113,7 @@ export const columns: ColumnDef<Contact>[] = [
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-            const contact = row.original
+            const contact = row.original;
 
             return (
                 <DropdownMenu>
@@ -125,6 +125,7 @@ export const columns: ColumnDef<Contact>[] = [
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             disabled={!contact.email}
                             onClick={() => navigator.clipboard.writeText(contact.email_address.address)
@@ -139,9 +140,6 @@ export const columns: ColumnDef<Contact>[] = [
                         >
                             Copy Phone Number
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>View customer</DropdownMenuItem>
-                        <DropdownMenuItem>View payment details</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             )
@@ -301,7 +299,7 @@ export default function DataTable(props: Props) {
                                          process={ProcessesEnum.ContactInformationCopied}
                                          title={"Contact information copied"}
                                          message={"Successfully copied the contact information into your clipboard!"}
-                                         time={10000}/>}
+                                         time={5000}/>}
         </div>
     )
 }
