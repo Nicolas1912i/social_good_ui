@@ -4,7 +4,7 @@ import DataTable from "@/components/ui/data-table";
 import { InputFile } from "@/components/ui/input-file";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getContacts, uploadCsv } from "@/services/api-service";
+import { getContacts, getUrl, uploadCsv } from "@/services/api-service";
 import { Contact } from "@/types/contact";
 import { TemporalAlert } from "@/components/ui/temporal-alert";
 import { ProcessesEnum } from "@/enums/processes-enum";
@@ -13,15 +13,9 @@ import { extractAccessToken } from "@/services/extract-service";
 import { setContactsParameters } from "@/services/contact-parameters-service";
 import { ActivityStatus } from "@/enums/activity-status-enum";
 import { uploadStatus } from "@/services/upload-status-service";
+import { ApiUrlEnum } from "@/enums/api-url-enum";
 
 export default function Home() {
-  const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
-  const clientSecret = process.env.NEXT_PUBLIC_CLIENT_SECRET!;
-  const authUrl =
-    "http://localhost:4000/authorize?clientId={client-id}&clientSecret={client-secret}&redirectUrl=http://localhost:3000"
-      .replace("{client-id}", clientId)
-      .replace("{client-secret}", clientSecret);
-
   const [fileContent, setFileContent] = useState<string>("");
   const [tableData, setTableData] = useState<Contact[]>([]);
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -34,28 +28,19 @@ export default function Home() {
   const handleFileSubmission = () => {
     const accessToken = extractAccessToken();
     const contactData = parseCsvToJson(fileContent);
-    uploadCsv(contactData, accessToken).then((response) =>
-      response.json().then(async (data) => {
-        const activityId: string = data.activity_id;
-        if (activityId) {
-          setShowAlert(true);
-          setAlertTitle("Successfully started import process!");
-          setAlertMessage(
-            "The process is running in the background, we'll notify you when the import is complete",
-          );
-          setAlertProcess(ProcessesEnum.StartingImportNotification);
+    uploadCsv(contactData, accessToken)
+      .then((response) =>
+        response.json().then(async (data) => {
+          const activityId: string = data.activity_id;
+          if (activityId) {
+            setShowAlert(true);
+            setAlertTitle("Successfully started import process!");
+            setAlertMessage(
+              "The process is running in the background, we'll notify you when the import is complete",
+            );
+            setAlertProcess(ProcessesEnum.StartingImportNotification);
 
-          let activityStatus = await uploadStatus(
-            accessToken,
-            activityId,
-            setShowAlert,
-            setAlertTitle,
-            setAlertMessage,
-            setAlertProcess,
-          );
-          while (activityStatus !== ActivityStatus.completed) {
-            setTimeout(() => {}, 3000);
-            activityStatus = await uploadStatus(
+            let activityStatus = await uploadStatus(
               accessToken,
               activityId,
               setShowAlert,
@@ -63,15 +48,30 @@ export default function Home() {
               setAlertMessage,
               setAlertProcess,
             );
+            while (activityStatus !== ActivityStatus.completed) {
+              setTimeout(() => {}, 3000);
+              activityStatus = await uploadStatus(
+                accessToken,
+                activityId,
+                setShowAlert,
+                setAlertTitle,
+                setAlertMessage,
+                setAlertProcess,
+              );
+            }
           }
-        }
-      }),
-    );
+        }),
+      )
+      .catch((error) => {
+        setShowAlert(true);
+        setAlertTitle("Error on uploading process!");
+        setAlertMessage("Error message is: " + error.message);
+      });
   };
 
   useEffect(() => {
     if (!window.location.href.includes("token")) {
-      window.location.assign(authUrl);
+      window.location.assign(getUrl(ApiUrlEnum.Authorize));
       return;
     }
   });
