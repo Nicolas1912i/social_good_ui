@@ -64,6 +64,7 @@ export default function Home() {
       )
       .catch((error) => {
         setShowAlert(true);
+        setAlertProcess(ProcessesEnum.ImportErrorNotification);
         setAlertTitle("Error on uploading process!");
         setAlertMessage("Error message is: " + error.message);
       });
